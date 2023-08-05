@@ -183,6 +183,63 @@ function net_enum(){
     else
         echo -e "[-] No listening TCP ports"
     fi
+
+    # Enumerating DNS
+    dns=`cat /etc/resolv.conf 2>/dev/null`
+    if [[ $dns ]]; then
+        echo -e "[*] DNS info: \n$dns"
+    else
+        echo -e "[-] Can't get any DNS info"
+    fi
+
+    # Route information
+    route=`ip r 2>/dev/null | grep default`
+    if [[ $route ]]; then
+        echo -e "[*] Route info: \n$route"
+    else
+        echo -e "[-] Can't get any route info"
+    fi
+}
+
+function env_enum(){
+    echo -e '\e[0;32m-------------------Performing environment enumeration-------------------\e[m'
+    # checking env variables
+    env=`env 2>/dev/null`
+    if [[ $env ]]; then
+        echo -e "[*] Env variables: \n$env"
+    else
+        echo -e "[-] Can't get any env variables"
+    fi
+
+    # check current PATH
+    path=`echo $PATH 2>/dev/null`
+    if [[ $path ]]; then
+        echo -e "[*] Current PATH: \n$path"
+    else
+        echo -e "[-] Can't get current PATH"
+    fi
+
+    # check available shells
+    shells=`cat /etc/shells 2>/dev/null`
+    if [[ $shells ]]; then
+        echo -e "[*] Available shells: \n$shells"
+    else
+        echo -e "[-] Can't get available shells"
+    fi
+
+
+}
+
+function files_enum(){
+    echo -e '\e[0;32m-------------------Performing files enumeration-------------------\e[m'
+    # checking suid binaries from GTFO, via HackTheBox
+    suid_binaries=`timeout 1 find / -perm -4000 -type f 2>/dev/null`
+    if [[ $suid_binaries ]]; then
+        echo -e "\e[0;31m[+] SUID binaries: \n$suid_binaries\e[m"
+    else
+        echo -e "[-] Can't get any SUID binaries"
+    fi
+
 }
 
 
@@ -192,3 +249,5 @@ function net_enum(){
 system_enum
 user_enum
 net_enum
+env_enum
+files_enum
