@@ -29,6 +29,7 @@ function user_enum(){
             continue
         fi
     done
+    echo -e test
 }
 
 
