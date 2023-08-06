@@ -220,7 +220,7 @@ function env_enum(){
     fi
 
     # check available shells
-    shells=`cat /etc/shells 2>/dev/null`
+    shells=`cat /etc/shells 2>/dev/null | tail -n +1`
     if [[ $shells ]]; then
         echo -e "[*] Available shells: \n$shells"
     else
@@ -240,6 +240,14 @@ function files_enum(){
         echo -e "[-] Can't get any SUID binaries"
     fi
 
+    # looking for .config files
+    config_files=`timeout 5 find / ! -path /proc -iname "*config*" 2>/dev/null`
+    if [[ $config_files ]]; then
+        echo -e "\e[0;31m[+] config files: \n\e[m"
+        echo -e "\e[0;34m$config_files\e[m"
+    else
+        echo -e "[-] Can't get any .config files"
+    fi
 }
 
 
