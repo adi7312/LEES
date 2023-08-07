@@ -248,6 +248,124 @@ function files_enum(){
     else
         echo -e "[-] Can't get any .config files"
     fi
+
+    # looking for .bak files
+    bak_files=`timeout 5 find / ! -path /proc -iname "*.bak*" 2>/dev/null`
+    if [[ $bak_files ]]; then
+        echo -e "\e[0;31m[+] Found some .bak files: \n\e[m"
+        echo -e "\e[0;34m$bak_files\e[m"
+    else
+        echo -e "[-] Can't get any .bak files"
+    fi
+
+    # installed compilers
+    compilers=`dpkg --list 2>/dev/null| grep compiler`
+    if [[ $compilers ]]; then
+        echo -e "\e[0;31m[+] Installed compilers: \n\e[m"
+        echo -e "\e[0;34m$compilers\e[m"
+    else
+        echo -e "[-] Can't get any installed compilers"
+    fi
+
+    # looking for sgid files
+    sgid_files=`timeout 5 find / ! -path /proc -perm -2000 -type f 2>/dev/null`
+    if [[ $sgid_files ]]; then
+        echo -e "\e[0;31m[+] Found some sgid files: \n\e[m"
+        echo -e "\e[0;34m$sgid_files\e[m"
+    else
+        echo -e "[-] Can't get any sgid files"
+    fi
+
+    # checking files with capabilities
+    capabilities=`getcap -r / 2>/dev/null`
+    if [[ $capabilities ]]; then
+        echo -e "\e[0;31m[+] Files with capabilities: \n\e[m"
+        echo -e "\e[0;34m$capabilities\e[m"
+    else
+        echo -e "[-] Can't get any files with capabilities"
+    fi
+
+    # lookig for private keys
+    echo -e "\e[1;33mWarning: this operation could be slow\e[m"
+    read -p 'Do you want to look for private keys?? [n/y]: ' option
+    if [[ $option == 'y' ]]; then
+        priv_keys=`grep -rl PRIVATE KEY---- /home 2>/dev/null`
+        if [[ $priv_keys ]]; then
+            echo -e "\e[0;31m[+] Found some private keys: \n\e[m"
+            echo -e "\e[0;34m$priv_keys\e[m"
+        else
+            echo -e "[-] Can't get any private keys"
+        fi
+    fi
+
+    # lookig for git credentials
+    git=`timeout 5find / -type f -name ".git-credentials" 2>/dev/null`
+    if [[ $git ]]; then
+        echo -e "\e[0;31m[+] Found some git credentials: \n\e[m"
+        echo -e "\e[0;34m$git\e[m"
+    else
+        echo -e "[-] Can't get any git credentials"
+    fi
+
+    # listing nfs shares
+    nfs=`timeout 5 showmount -e 2>/dev/null`
+    if [[ $nfs ]]; then
+        echo -e "\e[0;31m[+] NFS shares: \n\e[m"
+        echo -e "\e[0;34m$nfs\e[m"
+    else
+        echo -e "[-] Can't get any NFS shares"
+    fi
+}
+
+function cron_enum(){
+    echo -e '\e[0;32m-------------------Performing cron jobs enumeration-------------------\e[m'
+    # checking cron jobs
+    cron=`ls -la /etc/cron* 2>/dev/null; cat /etc/crontab 2>/dev/null; crontab -l 2>/dev/null`
+    if [[ $cron ]]; then
+        echo -e "[*] Cron jobs: \n$cron"
+    else
+        echo -e "[-] Can't get any cron jobs"
+    fi
+
+    # checking if we can modify any cron job
+    cron_files=`find /etc/cron* -perm -o+w 2>/dev/null`
+    if [[ $cron_files ]]; then
+        echo -e "\e[0;31m[+] You can modify the following cron jobs: \n\e[m"
+        echo -e "\e[0;34m$cron_files\e[m"
+    else
+        echo -e "[-] Can't modify any cron job"
+    fi
+    
+    # checking crontabs of other uses
+    cronusers=`cut -d ":" -f 1 /etc/passwd | xargs -n1 crontab -l -u 2>/dev/null`
+    if [[ $cronusers ]]; then
+        echo -e "\e[0;31m[+] Cron jobs of other users: \n\e[m"
+        echo -e "\e[0;34m$cronusers\e[m"
+    else
+        echo -e "[-] Can't get any cron jobs of other users"
+    fi
+
+}
+
+function service_enum(){
+    echo -e '\e[0;32m-------------------Performing service enumeration-------------------\e[m'
+    # checking running processes
+    processes=`ps aux 2>/dev/null`
+    if [[ $processes ]]; then
+        echo -e "\e[0;31m[+] Running processes: \n\e[m"
+        echo -e "\e[0;34m$processes\e[m"
+    else
+        echo -e "[-] Can't get any running processes"
+    fi
+
+    # check content of init.d 
+    initd=`ls -la /etc/init.d/ 2>/dev/null`
+    if [[ $initd ]]; then
+        echo -e "\e[0;31m[+] Content of init.d: \n\e[m"
+        echo -e "\e[0;34m$initd\e[m"
+    else
+        echo -e "[-] Can't get any content of init.d"
+    fi
 }
 
 
@@ -259,3 +377,5 @@ user_enum
 net_enum
 env_enum
 files_enum
+cron_enum
+service_enum
