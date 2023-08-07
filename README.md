@@ -39,6 +39,12 @@ For now, script perfrom these tasks:
 * Service enum:
   * Running processess
   * Content of init.d
+  * Checking installed serivces: mysql, postgresql, apache2 (more services will be added in the future)
+* Docker enum:
+  * Checking if we are inside container
+  * Docker version, images, files (to be expanded)
+* LXC/LXD enum:
+  * Checking if we are LXC/LXD container
   
 
 Running script:

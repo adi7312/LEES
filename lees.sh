@@ -125,7 +125,7 @@ function user_enum(){
     
     # finding .ssh directories
     echo -e "[*] Looking for ssh directories"
-    ssh_dirs=`timeout 1 find / -name .ssh -exec ls -la {} 2>/dev/null \;` 
+    ssh_dirs=`find / -name .ssh -exec ls -la {} 2>/dev/null \;` 
     if [[ $ssh_dirs ]]; then
         echo -e "\e[0;31m[+] .ssh directories found: \e[m"
         echo -e "\e[0;34m$ssh_dirs\e[m"
@@ -233,7 +233,7 @@ function env_enum(){
 function files_enum(){
     echo -e '\e[0;32m-------------------Performing files enumeration-------------------\e[m'
     # checking suid binaries from GTFO, via HackTheBox
-    suid_binaries=`timeout 1 find / -perm -4000 -type f 2>/dev/null`
+    suid_binaries=`find / -perm -4000 -type f 2>/dev/null`
     if [[ $suid_binaries ]]; then
         echo -e "\e[0;31m[+] SUID binaries: \n$suid_binaries\e[m"
     else
@@ -241,18 +241,18 @@ function files_enum(){
     fi
 
     # looking for .config files
-    config_files=`timeout 5 find / ! -path /proc -iname "*config*" 2>/dev/null`
+    config_files=`find / ! -path /proc -iname "*config*" 2>/dev/null`
     if [[ $config_files ]]; then
-        echo -e "\e[0;31m[+] config files: \n\e[m"
+        echo -e "[*] config files: \n"
         echo -e "\e[0;34m$config_files\e[m"
     else
         echo -e "[-] Can't get any .config files"
     fi
 
     # looking for .bak files
-    bak_files=`timeout 5 find / ! -path /proc -iname "*.bak*" 2>/dev/null`
+    bak_files=`find / ! -path /proc -iname "*.bak*" 2>/dev/null`
     if [[ $bak_files ]]; then
-        echo -e "\e[0;31m[+] Found some .bak files: \n\e[m"
+        echo -e "[*] Found some .bak files: \n"
         echo -e "\e[0;34m$bak_files\e[m"
     else
         echo -e "[-] Can't get any .bak files"
@@ -261,14 +261,14 @@ function files_enum(){
     # installed compilers
     compilers=`dpkg --list 2>/dev/null| grep compiler`
     if [[ $compilers ]]; then
-        echo -e "\e[0;31m[+] Installed compilers: \n\e[m"
+        echo -e "[*] Installed compilers: \n"
         echo -e "\e[0;34m$compilers\e[m"
     else
         echo -e "[-] Can't get any installed compilers"
     fi
 
     # looking for sgid files
-    sgid_files=`timeout 5 find / ! -path /proc -perm -2000 -type f 2>/dev/null`
+    sgid_files=`find / ! -path /proc -perm -2000 -type f 2>/dev/null`
     if [[ $sgid_files ]]; then
         echo -e "\e[0;31m[+] Found some sgid files: \n\e[m"
         echo -e "\e[0;34m$sgid_files\e[m"
@@ -279,7 +279,7 @@ function files_enum(){
     # checking files with capabilities
     capabilities=`getcap -r / 2>/dev/null`
     if [[ $capabilities ]]; then
-        echo -e "\e[0;31m[+] Files with capabilities: \n\e[m"
+        echo -e "[*] Files with capabilities: \n"
         echo -e "\e[0;34m$capabilities\e[m"
     else
         echo -e "[-] Can't get any files with capabilities"
@@ -299,7 +299,7 @@ function files_enum(){
     fi
 
     # lookig for git credentials
-    git=`timeout 5find / -type f -name ".git-credentials" 2>/dev/null`
+    git=`find / -type f -name ".git-credentials" 2>/dev/null`
     if [[ $git ]]; then
         echo -e "\e[0;31m[+] Found some git credentials: \n\e[m"
         echo -e "\e[0;34m$git\e[m"
@@ -308,12 +308,30 @@ function files_enum(){
     fi
 
     # listing nfs shares
-    nfs=`timeout 5 showmount -e 2>/dev/null`
+    nfs=`showmount -e 2>/dev/null`
     if [[ $nfs ]]; then
-        echo -e "\e[0;31m[+] NFS shares: \n\e[m"
+        echo -e "[*] NFS shares: \n"
         echo -e "\e[0;34m$nfs\e[m"
     else
         echo -e "[-] Can't get any NFS shares"
+    fi
+
+    # listing smb shares
+    smb=`smbclient -L \\\\localhost -N 2>/dev/null`
+    if [[ $smb ]]; then
+        echo -e "[*] SMB shares: \n"
+        echo -e "\e[0;34m$smb\e[m"
+    else
+        echo -e "[-] Can't get any SMB shares"
+    fi
+
+    # checking htpasswd
+    htpasswd=`find / -name .htpasswd -print -exec cat {} \; 2>/dev/null`
+    if [[ $htpasswd ]]; then
+        echo -e "\e[0;31m[+] Found some htpasswd files (possible credentials leak): \n\e[m"
+        echo -e "\e[0;34m$htpasswd\e[m"
+    else
+        echo -e "[-] Can't get any htpasswd files"
     fi
 }
 
@@ -348,7 +366,7 @@ function cron_enum(){
 }
 
 function service_enum(){
-    echo -e '\e[0;32m-------------------Performing service enumeration-------------------\e[m'
+    echo -e '\e[0;32m-------------------Performing service and software enumeration-------------------\e[m'
     # checking running processes
     processes=`ps aux 2>/dev/null`
     if [[ $processes ]]; then
@@ -366,9 +384,87 @@ function service_enum(){
     else
         echo -e "[-] Can't get any content of init.d"
     fi
+
+    # checking if mysql is installed
+    mysql=`mysql --version 2>/dev/null`
+    if [[ $mysql ]]; then
+        echo -e "[*] MySQL version: $mysql\n"
+    else
+        echo -e "[-] Can't get MySQL version"
+    fi
+
+    # checking if postgres is installed
+    postgres=`psql --version 2>/dev/null`
+    if [[ $postgres ]]; then
+        echo -e "[*] Postgres version: $postgres\n"
+        
+    else
+        echo -e "[-] Can't get Postgres version"
+    fi
+
+    # checking if apache is installed
+    apache=`apache2 -v 2>/dev/null`
+    if [[ $apache ]]; then
+        echo -e "[*] Apache version: $apache\n"
+    else
+        echo -e "[-] Can't get Apache version"
+    fi
+
 }
 
+function docker_enum(){
+    echo -e '\e[0;32m-------------------Performing docker enumeration-------------------\e[m'
 
+    # checking if we are inside container
+    container=`cat /proc/self/cgroup 2>/dev/null | grep -i docker; find / -name "*dockerenv*" 2>/dev/null`
+    if [[ $container ]]; then
+        echo -e "\e[0;31m[+] You are probably inside docker container: \n\e[m"
+        echo -e "\e[0;34m$container\e[m"
+    else
+        echo -e "[-] You are not inside docker container"
+    fi
+
+    # check docker version
+    docker_ver=`docker --version 2>/dev/null`
+    if [[ $docker_ver ]]; then
+        echo -e "[*] Docker version: $docker_ver\n"
+    else
+        echo -e "[-] Can't get Docker version"
+    fi
+
+    # check docker files
+    docker_files=`find / -name "Dockerfile" -exec ls -l {} 2>/dev/null \;`
+    if [[ $docker_files ]]; then
+        echo -e "[*] Fond some Docker files: \n"
+        echo -e "\e[0;34m$docker_files\e[m"
+    else
+        echo -e "[-] Can't get Docker files"
+    fi
+
+    # check docker images
+    docker_images=`docker images 2>/dev/null`
+    if [[ $docker_images ]]; then
+        echo -e "[*] Docker images: \n"
+        echo -e "\e[0;34m$docker_images\e[m"
+    else
+        echo -e "[-] Can't get Docker images"
+    fi
+
+}
+
+function lxc_lxd_enum(){
+    echo -e '\e[0;32m-------------------Performing LXC/LXD enumeration-------------------\e[m'
+    # check if we are inside lxc/lxd container
+    lxc=`cat /proc/self/cgroup 2>/dev/null | grep -i lxc || grep -qa container=lxc /proc/1/environ 2>/dev/null`
+    if [[ $lxc ]]; then
+        echo -e "\e[0;31m[+] You are probably inside lxc/lxd container: \n\e[m"
+        echo -e "\e[0;34m$lxc\e[m"
+    else
+        echo -e "[-] You are not inside lxc/lxd container"
+    fi
+
+
+}
 
 
 
@@ -379,3 +475,5 @@ env_enum
 files_enum
 cron_enum
 service_enum
+docker_enum
+lxc_lxd_enum
