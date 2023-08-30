@@ -117,14 +117,6 @@ function user_enum(){
     fi
         
 
-    # Show sudo -l
-    sudo_l=`sudo -l 2>/dev/null | tail -n +4`
-    if [[ $sudo_l ]]; then
-        echo -e "[*] Sudo -l: \e[0;34m\n$sudo_l\e[m"
-    else
-        echo -e "[-] Can't get access to sudo -l"
-    fi
-
     # Checking if /root can be  read
     root=`ls -la /root 2>/dev/null`
     if [[ $root ]]; then
@@ -412,14 +404,30 @@ function service_enum(){
     mysql=`mysql --version 2>/dev/null`
     if [[ $mysql ]]; then
         echo -e "[*] MySQL version: $mysql\n"
+        mysql_vulns=`searchsploit $mysql 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected MySQL vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+        else
+            echo -e "[-] Can't get MySQL vulnerabilities for this version."
+    fi
     else
         echo -e "[-] Can't get MySQL version"
     fi
+
+    
 
     # checking if postgres is installed
     postgres=`psql --version 2>/dev/null`
     if [[ $postgres ]]; then
         echo -e "[*] Postgres version: $postgres\n"
+        mysql_vulns=`searchsploit $postgres 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected PostgreSQL vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+    else
+        echo -e "[-] Can't get MySQL vulnerabilities for this version."
+    fi
         
     else
         echo -e "[-] Can't get Postgres version"
@@ -429,6 +437,13 @@ function service_enum(){
     apache=`apache2 -v 2>/dev/null`
     if [[ $apache ]]; then
         echo -e "[*] Apache version: $apache\n"
+        mysql_vulns=`searchsploit $mysql 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected Apache vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+        else
+            echo -e "[-] Can't get MySQL vulnerabilities for this version."
+        fi
     else
         echo -e "[-] Can't get Apache version"
     fi
@@ -508,8 +523,19 @@ function crack_passwords(){
         echo -e "[-] No passwords cracked"
     fi
     rm -r ./tmp
+}
 
+function python_library_hijacking(){
+    echo -e '\e[0;32m-------------------Looking for potential python library hijacking-------------------\e[m'
 
+    # checking writable .py files with SUID bit set
+    py_files=`find / -perm -u=s -type f -name "*.py" 2>/dev/null`
+    if [[ $py_files ]]; then
+        echo -e "\e[0;31m[+] Writable .py files with SUID bit set: \n\e[m"
+        echo -e "\e[0;34m$py_files\e[m"
+    else
+        echo -e "[-] Can't get any writable .py files with SUID bit set"
+    fi
 }
 
 
@@ -524,3 +550,4 @@ cron_enum
 service_enum
 docker_enum
 lxc_lxd_enum
+python_library_hijacking
