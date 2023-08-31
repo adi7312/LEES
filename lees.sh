@@ -1,6 +1,22 @@
 #!/bin/bash
 
 echo -e '\e[1;33m[*] STARTING LEES (Linux Environment Enumeration Script)...\e[m'
+echo -e '
+ ▄            ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄▄▄ 
+▐░▌          ▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌
+▐░▌          ▐░█▀▀▀▀▀▀▀▀▀ ▐░█▀▀▀▀▀▀▀▀▀ ▐░█▀▀▀▀▀▀▀▀▀ 
+▐░▌          ▐░▌          ▐░▌          ▐░▌          
+▐░▌          ▐░█▄▄▄▄▄▄▄▄▄ ▐░█▄▄▄▄▄▄▄▄▄ ▐░█▄▄▄▄▄▄▄▄▄ 
+▐░▌          ▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌
+▐░▌          ▐░█▀▀▀▀▀▀▀▀▀ ▐░█▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀█░▌
+▐░▌          ▐░▌          ▐░▌                    ▐░▌
+▐░█▄▄▄▄▄▄▄▄▄ ▐░█▄▄▄▄▄▄▄▄▄ ▐░█▄▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄█░▌
+▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌▐░░░░░░░░░░░▌
+ ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀▀ 
+                                                    
+'
+echo -e 'Author: adi7312'
+echo -e 'GitHub: https://github.com/adi7312/LEES'
 
 function system_enum() { 
     echo -e '\e[0;32m-------------------Performing system enumeration-----------------\e[m'
@@ -57,6 +73,13 @@ function user_enum(){
     if [[ $etc_shadow ]]; then
         echo -e "\e[0;31m[+] Shadow file can be read! \e[m"
         echo -e "\e[0;34m$etc_shadow\e[m"
+        mkdir tmp; touch ./tmp/hashes;
+        cat $etc_shadow > ./tmp/hashes
+        echo -e "[*] Hashes saved to ./tmp/hashes"
+        read -p "[*] Do you want to crack hashes now? [y/n]: " answer
+        if [[ $answer == "y" ]]; then
+            crack_passwords
+        fi
     else
         echo -e "[-] Can't get access to shadow file"
     fi    
@@ -94,14 +117,6 @@ function user_enum(){
     fi
         
 
-    # Show sudo -l
-    sudo_l=`sudo -l 2>/dev/null | tail -n +4`
-    if [[ $sudo_l ]]; then
-        echo -e "[*] Sudo -l: \e[0;34m\n$sudo_l\e[m"
-    else
-        echo -e "[-] Can't get access to sudo -l"
-    fi
-
     # Checking if /root can be  read
     root=`ls -la /root 2>/dev/null`
     if [[ $root ]]; then
@@ -125,7 +140,7 @@ function user_enum(){
     
     # finding .ssh directories
     echo -e "[*] Looking for ssh directories"
-    ssh_dirs=`find / -name .ssh -exec ls -la {} 2>/dev/null \;` 
+    ssh_dirs=`timeout 1 find / -name .ssh -exec ls -la {} 2>/dev/null \;` 
     if [[ $ssh_dirs ]]; then
         echo -e "\e[0;31m[+] .ssh directories found: \e[m"
         echo -e "\e[0;34m$ssh_dirs\e[m"
@@ -389,14 +404,30 @@ function service_enum(){
     mysql=`mysql --version 2>/dev/null`
     if [[ $mysql ]]; then
         echo -e "[*] MySQL version: $mysql\n"
+        mysql_vulns=`searchsploit $mysql 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected MySQL vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+        else
+            echo -e "[-] Can't get MySQL vulnerabilities for this version."
+    fi
     else
         echo -e "[-] Can't get MySQL version"
     fi
+
+    
 
     # checking if postgres is installed
     postgres=`psql --version 2>/dev/null`
     if [[ $postgres ]]; then
         echo -e "[*] Postgres version: $postgres\n"
+        mysql_vulns=`searchsploit $postgres 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected PostgreSQL vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+    else
+        echo -e "[-] Can't get MySQL vulnerabilities for this version."
+    fi
         
     else
         echo -e "[-] Can't get Postgres version"
@@ -406,9 +437,17 @@ function service_enum(){
     apache=`apache2 -v 2>/dev/null`
     if [[ $apache ]]; then
         echo -e "[*] Apache version: $apache\n"
+        mysql_vulns=`searchsploit $mysql 2>/dev/null`
+        if [[ $mysql_vulns ]]; then
+            echo -e "\e[0;31m[+] Detected Apache vulnerabilities: \n\e[m"
+            echo -e "\e[0;34m$mysql_vulns\e[m"
+        else
+            echo -e "[-] Can't get MySQL vulnerabilities for this version."
+        fi
     else
         echo -e "[-] Can't get Apache version"
     fi
+    
 
 }
 
@@ -463,8 +502,42 @@ function lxc_lxd_enum(){
         echo -e "[-] You are not inside lxc/lxd container"
     fi
 
-
 }
+
+function crack_passwords(){
+    echo -e '\e[0;32m\-------------------Performing password cracking-------------------/\e[m'
+    # checking if we can crack passwords
+    read -p "[*] Please specify wordlist location: " wordlist
+    echo -e "[*] Cracking passwords"
+    content=`cat ./tmp/hashes 2>/dev/null`
+    mkdir ./results
+    if [[ $content ]]; then
+        hashcat -a 0 ./tmp/hashes $wordlist --force --quiet --potfile-disable --outfile ./results/cracked.txt
+    else
+        echo -e "[-] No hashes to crack"
+    fi
+    if [[ -s cracked.txt ]]; then
+        echo -e "[+] Passwords cracked: \n"
+        cat cracked.txt
+    else
+        echo -e "[-] No passwords cracked"
+    fi
+    rm -r ./tmp
+}
+
+function python_library_hijacking(){
+    echo -e '\e[0;32m-------------------Looking for potential python library hijacking-------------------\e[m'
+
+    # checking writable .py files with SUID bit set
+    py_files=`find / -perm -u=s -type f -name "*.py" 2>/dev/null`
+    if [[ $py_files ]]; then
+        echo -e "\e[0;31m[+] Writable .py files with SUID bit set: \n\e[m"
+        echo -e "\e[0;34m$py_files\e[m"
+    else
+        echo -e "[-] Can't get any writable .py files with SUID bit set"
+    fi
+}
+
 
 
 
@@ -477,3 +550,4 @@ cron_enum
 service_enum
 docker_enum
 lxc_lxd_enum
+python_library_hijacking
