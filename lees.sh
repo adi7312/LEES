@@ -18,6 +18,16 @@ echo -e '
 echo -e 'Author: adi7312'
 echo -e 'GitHub: https://github.com/adi7312/LEES'
 
+
+function help(){
+    echo -e '\e[1;33m[*] HELP\e[m'
+    echo -e 'Usage: ./lees.sh [OPTION]'
+    echo -e 'Options:'
+    echo -e '  -h, --help\t Printing help'
+    echo -e '  -w, --writable\t Checking writable files'
+    echo -e '  -s, --sudo\t Checking sudo -l command'
+}
+
 function system_enum() { 
     echo -e '\e[0;32m-------------------Performing system enumeration-----------------\e[m'
 
@@ -97,6 +107,15 @@ function user_enum(){
     # Show sudoers info
     sudoers=`cat /etc/sudoers | grep -v '^#' | grep -v '^$' 2>/dev/null`
     if [[ $sudoers ]]; then
+    
+        if [[ $sudoers == *"NOPASSWD"* ]]; then
+            echo -e "\e[0;31m[+] NOPASSWD sudo commands found, potential privilege escalation vector\e[m"
+        fi
+
+        if [[ $sudoers == *"LD_PRELOAD"* ]]; then
+            echo -e "\e[0;31m[+] LD_PRELOAD modification is possible, potential privilege escalation vector\e[m"
+        fi
+        
         echo -e "[*] Sudoers file: "
         echo -e "\e[0;34m$sudoers\e[m"
     else
@@ -108,6 +127,7 @@ function user_enum(){
     if [[ $sudo_version ]]; then
         echo -e "[*] Sudo version: \e[0;34m$sudo_version\e[m"
         sudo_version=`echo $sudo_version | sed 's/\./ /g'`
+
         sudo_version=($sudo_version)
         if [[ ${sudo_version[0]} -le 1 && ${sudo_version[1]} -le 8 && ${sudo_version[2]} -lt 28 ]]; then
             echo -e "\e[0;31m[+] Sudo version is below 1.8.28, potential privilege escalation vector (CVE-2019-14287)\e[m"
@@ -127,8 +147,7 @@ function user_enum(){
 
     # checking writable files, not own by user
     echo -e "\e[1;33mWarning: this operation is really slow\e[m"
-    read -p 'Do you want to check writable files? [n/y]: ' option
-    if [[ $option == 'y' ]]; then
+    if [[ $1 == '-w' ]] || [[ $1 == '--writable' ]]; then
          writable_files=`find / -writable ! -user \`whoami\` -type f ! -path "/proc/*" ! -path "/sys/*" -! -path "/dev/*" -exec ls -al {} \; 2>/dev/null`
         if [[ $writable_files ]]; then
             echo -e "\e[0;31m[+] Writable files not owned by user: \e[m"
@@ -155,6 +174,26 @@ function user_enum(){
     else
         echo -e "[-] Root is not allowed to connect via ssh"
     fi
+
+    # check sudo -l
+    if [[ $1 == "-s" ]] || [[ $1 == "--sudo" ]]; then
+        sudo_l=`sudo -l 2>/dev/null`
+        if [[ $sudo_l ]]; then
+            if [[ $sudo_l == *"NOPASSWD"* ]]; then
+                echo -e "\e[0;31m[+] NOPASSWD sudo commands found, potential privilege escalation vector\e[m"
+            fi
+            if [[ $sudo_l == *"LD_PRELOAD"* ]]; then
+                echo -e "\e[0;31m[+] LD_PRELOAD modification is possible, potential privilege escalation vector\e[m"
+            fi
+            echo -e "[*] sudo -l output: \e[m"
+            echo -e "$sudo_l\e[m"
+            
+            
+        else
+            echo -e "[-] Can't get sudo -l output"
+        fi
+    fi
+    
    
 }
 
@@ -539,15 +578,18 @@ function python_library_hijacking(){
 }
 
 
+if [[ $1 == '-h' ]] || [[ $1 == '--help' ]]; then
+    help
+    exit 0
+fi
 
-
-system_enum
+#system_enum
 user_enum
-net_enum
-env_enum
-files_enum
-cron_enum
-service_enum
-docker_enum
-lxc_lxd_enum
-python_library_hijacking
+# net_enum
+# env_enum
+# files_enum
+# cron_enum
+# service_enum
+# docker_enum
+# lxc_lxd_enum
+# python_library_hijacking
